@@ -209,34 +209,27 @@ class KnowledgeEngine:
         return list(dict.fromkeys(docs))
 
     def _detect_situations(self, norm_text: str) -> List[str]:
-        """Detect situation (first_issue, renewal, lost, damaged)."""
-        situations = []
+        """Detect situation (first_issue, renewal, lost, damaged) preserving order of appearance."""
+        patterns = [
+            ('damaged', r'(?:بدل\s+تالف|تالف|خربان|ممزوع|اهترى|اهتري|مهتري|تلف|مشوه|مكسور|انكسر|انكسرت|تلفان)'),
+            ('lost', r'(?:بدل\s+فاقد|فاقد|ضايع|ضيعت|ضيعته|ضاع|سرق|انسرق|مفقود|فقدان)'),
+            ('first_issue', r'(?:اول\s+مره|لاول\s+مره|اصدار\s+جديد|اصدار\s+لاول\s+مره|بدي\s+اطلع\s+جديد|جديد\s+لاول\s+مره|اصدار\s+بطاقه|اصدار\s+دفتر|اصدار\s+جواز)'),
+            ('renewal', r'(?:تجديد|اجدد|تجديده|تجديدها|خلص|منتهي|انتهت|انتهى|صلاحيه|جدد)')
+        ]
 
-        # Lost
-        if any(w in norm_text for w in [
-            'بدل فاقد', 'فاقد', 'ضايع', 'ضيعت', 'ضيعته', 'ضاع', 'سرق', 'انسرق', 'مفقود', 'فقدان'
-        ]):
-            situations.append('lost')
+        matches = []
+        for sit, pat in patterns:
+            for m in re.finditer(pat, norm_text):
+                matches.append((m.start(), sit))
 
-        # Damaged
-        if any(w in norm_text for w in [
-            'بدل تالف', 'تالف', 'خربان', 'ممزوع', 'اهترى', 'اهتري', 'مهتري', 'تلف', 'مشوه', 'مكسور', 'تلفان'
-        ]):
-            situations.append('damaged')
+        matches.sort(key=lambda x: x[0])
+        # Return unique situations in order of appearance
+        ordered_sits = []
+        for _, sit in matches:
+            if sit not in ordered_sits:
+                ordered_sits.append(sit)
 
-        # First issue
-        if any(w in norm_text for w in [
-            'اول مره', 'لاول مره', 'اصدار جديد', 'اصدار لاول مره', 'بدي اطلع جديد', 'جديد لاول مره', 'اصدار بطاقه'
-        ]):
-            situations.append('first_issue')
-
-        # Renewal
-        if any(w in norm_text for w in [
-            'تجديد', 'اجدد', 'تجديده', 'تجديدها', 'خلص', 'منتهي', 'انتهت', 'انتهى', 'صلاحيه', 'جدد'
-        ]):
-            situations.append('renewal')
-
-        return list(dict.fromkeys(situations))
+        return ordered_sits
 
     def _detect_sections(self, norm_text: str) -> List[str]:
         """Detect topic/section requested by the citizen."""
