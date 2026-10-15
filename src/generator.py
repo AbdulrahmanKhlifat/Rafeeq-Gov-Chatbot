@@ -33,12 +33,24 @@ class ResponseGenerator:
     def __init__(self, model_name: str = DEFAULT_MODEL, api_url: str = OLLAMA_API_URL):
         self.model_name = model_name
         self.api_url = api_url
+        self._checked_online = False
+        self._is_online = False
+
+    def _check_health(self) -> bool:
+        if self._checked_online:
+            return self._is_online
+        try:
+            req = urllib.request.Request("http://localhost:11434/", headers={"User-Agent": "RafeeqBot"})
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
+                self._is_online = (resp.status == 200)
+        except Exception:
+            self._is_online = False
+        self._checked_online = True
+        return self._is_online
 
     def _call_ollama(self, prompt: str) -> Optional[str]:
-        """
-        Sends generation request to local Ollama daemon using standard library urllib.
-        Zero external dependencies required.
-        """
+        if not self._check_health():
+            return None
         payload = {
             "model": self.model_name,
             "prompt": prompt,
@@ -59,12 +71,12 @@ class ResponseGenerator:
         )
         
         try:
-            with urllib.request.urlopen(req, timeout=45) as response:
+            with urllib.request.urlopen(req, timeout=5) as response:
                 if response.status == 200:
                     result = json.loads(response.read().decode("utf-8"))
                     return result.get("response", "").strip()
-        except urllib.error.URLError as e:
-            # Fallback if Ollama daemon is temporarily unreachable or busy
+        except urllib.error.URLError:
+            # Fallback if Ollama daemon is unreachable
             return None
         except Exception:
             return None
