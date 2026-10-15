@@ -374,7 +374,11 @@ class KnowledgeEngine:
 
         # 5. Ambiguity Check
         if not detected_docs:
-            if detected_sits or detected_secs:
+            generic_inquiry = any(w in norm_q for w in [
+                'معامله', 'معاملات', 'وثيق', 'وثائق', 'طلب', 'استفسار',
+                'اجراء', 'خطوات', 'شروط', 'رسوم', 'اوراق', 'تجديد', 'فاقد', 'تالف', 'اصدار', 'وين', 'كيف'
+            ])
+            if detected_sits or detected_secs or generic_inquiry:
                 return RetrievalResult(
                     service_found=True,
                     is_ambiguous=True,
