@@ -308,11 +308,14 @@ class KnowledgeEngine:
                 prev_q = normalize_arabic(turn.get("question", ""))
                 prev_docs = self._detect_documents(prev_q)
                 prev_sits = self._detect_situations(prev_q)
+                prev_secs = self._detect_sections(prev_q)
 
                 if not detected_docs and prev_docs:
                     detected_docs = [prev_docs[0]]
                 if not detected_sits and prev_sits:
                     detected_sits = [prev_sits[0]]
+                if not detected_secs and prev_secs:
+                    detected_secs = [prev_secs[0]]
 
                 if detected_docs and detected_sits:
                     break
@@ -355,6 +358,15 @@ class KnowledgeEngine:
                             sit = 'renewal'
                         elif any(w in norm_q for w in ['لاول مره', 'اول مره']):
                             sit = 'first_issue'
+                    elif doc == 'family_book':
+                        if any(w in norm_q for w in ['لاول مره', 'اول مره', 'زواج', 'فتح قيد', 'جديد', 'اطلع']):
+                            sit = 'first_issue'
+                        elif 'تجديد' in norm_q:
+                            sit = 'renewal'
+                        elif any(w in norm_q for w in ['فاقد', 'ضاع', 'ضيعت']):
+                            sit = 'lost'
+                        elif any(w in norm_q for w in ['تالف', 'اهترى', 'ممزوع']):
+                            sit = 'damaged'
 
                     if not sit:
                         sit = detected_sits[0] if detected_sits else 'first_issue'

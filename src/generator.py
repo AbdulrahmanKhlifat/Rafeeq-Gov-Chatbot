@@ -70,7 +70,7 @@ class ResponseGenerator:
             "options": {
                 "temperature": 0.1,      # Deterministic consistency
                 "top_p": 0.8,
-                "num_predict": 64,       # Fast, concise answers (1-2 sentences)
+                "num_predict": 96,       # Fast, complete answers including multi-part queries
                 "num_ctx": 1024,         # Optimized KV cache size for CPU speed
                 "stop": ["المواطن:", "السؤال:", "سؤال:", "\n\n"]
             }
