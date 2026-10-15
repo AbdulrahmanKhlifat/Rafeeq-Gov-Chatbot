@@ -1,0 +1,66 @@
+{
+  "chats": [
+    {
+      "chat_id": "unseen-chat-01",
+      "messages": [
+        {
+          "message_id": "unseen-01-1",
+          "question": "عمري 22 سنة وبدي أطلع بطاقة أحوال ذكية لأول مرة، كم الرسوم والغرامة اللي رح أدفعها؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "unseen-chat-02",
+      "messages": [
+        {
+          "message_id": "unseen-02-1",
+          "question": "أنا ضيعت جواز سفري للمرة الثانية، كم رح تكون الرسوم؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "unseen-chat-03",
+      "messages": [
+        {
+          "message_id": "unseen-03-1",
+          "question": "بدي أجدد دفتر العائلة، كم الرسوم إذا كان منتهي؟"
+        },
+        {
+          "message_id": "unseen-03-2",
+          "question": "وإذا ما كان منتهي؟"
+        },
+        {
+          "message_id": "unseen-03-3",
+          "question": "وين بقدر أقدمه؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "unseen-chat-04",
+      "messages": [
+        {
+          "message_id": "unseen-04-1",
+          "question": "هل بحتاج فحص طبي لزمرة الدم لإصدار البطاقة الذكية لأول مرة؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "unseen-chat-05",
+      "messages": [
+        {
+          "message_id": "unseen-05-1",
+          "question": "كيف بقدر أقدم على قرض إسكاني أو تمويل بنكي؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "unseen-chat-06",
+      "messages": [
+        {
+          "message_id": "unseen-06-1",
+          "question": "بدي أقدم على معاملة، شو المطلوب مني؟"
+        }
+      ]
+    }
+  ]
+}
