@@ -24,22 +24,44 @@
 
 ---
 
+4. **Repository Inception & Push to GitHub**:
+   - Initialized Git repository and connected remote: `https://github.com/AbdulrahmanKhlifat/Rafeeq-Gov-Chatbot.git`.
+   - Committed `.gitignore`, `requirements.txt`, `src/__init__.py`, `src/types.py`, `phases.md`, and `memory.md`.
+   - Pushed `main` branch to remote GitHub repository.
+   - Created and switched to working branch `feature/llm-evaluator`.
+
+5. **LLM Generator Implementation (`src/generator.py`)**:
+   - Implemented `ResponseGenerator` using Python standard library (`urllib.request`) to eliminate external offline package failures.
+   - Configured deterministic sampling: `temperature=0.1`, `num_predict=256`, `num_ctx=2048`.
+   - Built zero-latency refusal guardrail for out-of-scope queries (0ms LLM bypass).
+   - Designed Arabic system prompt enforcing strict grounding in provided contexts.
+
+6. **Knowledge Engine Baseline (`src/engine.py`)**:
+   - Implemented 12-file text parser extracting sections (fees, documents, conditions, locations, time, notes).
+   - Added keyword and Jordanian dialect mapping for documents, actions, and topics.
+   - Added multi-turn conversational coreference resolution.
+
+7. **Evaluation Pipeline (`main.py`)**:
+   - Implemented official evaluation runner: `python main.py questions.json`.
+   - Added per-message `try...except` fault tolerance.
+   - Enforced UTF-8 file output to `answers.json` matching `answers_example.json` structure.
+   - Verified end-to-end execution: 6 messages across 5 chats processed successfully.
+
+8. **AI Model & Ollama Setup**:
+   - Initiated Ollama download and installation via `winget`.
+
+---
+
 ## Current Status
-- **Current Phase**: Phase 0 (Git & Shared Contracts) & Phase 1 (Ollama Installation & Model Setup).
-- **Environment**: Windows 11 Pro, Python 3.14.2, winget available. Ollama is not yet installed.
+- **Current Phase**: Phase 1 (Ollama Installation & Model Pull).
+- **Branch**: `feature/llm-evaluator`
+- **Verification Status**: End-to-end pipeline tested on `questions.json`; generated `answers.json` structurally identical to `answers_example.json`.
 
 ---
 
 ## Immediate Next Steps
-1. **Initialize Git & Shared Files**:
-   - Initialize git repo, create `.gitignore`, `requirements.txt`, and `src/types.py`.
-   - Push initial commit to `https://github.com/AbdulrahmanKhlifat/Rafeeq-Gov-Chatbot.git`.
-   - Checkout branch `feature/llm-evaluator`.
-2. **Install Ollama & Download Model**:
-   - Install Ollama via `winget install Ollama.Ollama` or download official installer.
-   - Start Ollama server.
-   - Pull target ~7B model (recommend `qwen2.5:7b` for superior Arabic comprehension and rule extraction).
-3. **Build `src/generator.py`**:
-   - Implement HTTP client to communicate with `http://localhost:11434/api/generate`.
-   - Implement Arabic system prompts and zero-latency guardrail for out-of-scope queries.
-   - Unit test inference on CPU.
+1. Complete Ollama setup and verify daemon (`ollama serve` / `ollama list`).
+2. Pull `qwen2.5:7b` (or provided hackathon model) locally.
+3. Test end-to-end inference through Ollama with the 7B model.
+4. Push `feature/llm-evaluator` updates to GitHub so teammates can see the working generator and `main.py`.
+
