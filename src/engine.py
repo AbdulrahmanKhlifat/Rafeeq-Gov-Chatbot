@@ -20,6 +20,11 @@ class KnowledgeEngine:
         self.services_data: Dict[str, Dict[str, str]] = {}
         self._load_and_parse_files()
 
+    def _clean_text(self, text: str) -> str:
+        text = text.replace("\t", " ").replace("]", "").replace("[", "").strip()
+        lines = [re.sub(r' +', ' ', l).strip() for l in text.splitlines() if l.strip()]
+        return "\n".join(lines)
+
     def _load_and_parse_files(self):
         """Loads and parses the 12 text files into structured service dictionaries."""
         if not os.path.exists(self.data_dir):
@@ -60,15 +65,20 @@ class KnowledgeEngine:
 
                     if matched_h:
                         if buffer:
-                            fields[current_key] = "\n".join(buffer).strip()
+                            raw_val = "\n".join(buffer).strip()
+                            raw_val = re.sub(r'^(لتقديم الخدمة|للحصول على الخدمة)\s*', '', raw_val).strip()
+                            fields[current_key] = self._clean_text(raw_val)
                         current_key = matched_h
                         remainder = line[len(matched_h):].strip()
+                        remainder = re.sub(r'^(لتقديم الخدمة|للحصول على الخدمة)\s*', '', remainder).strip()
                         buffer = [remainder] if remainder else []
                     else:
                         buffer.append(line)
 
                 if buffer:
-                    fields[current_key] = "\n".join(buffer).strip()
+                    raw_val = "\n".join(buffer).strip()
+                    raw_val = re.sub(r'^(لتقديم الخدمة|للحصول على الخدمة)\s*', '', raw_val).strip()
+                    fields[current_key] = self._clean_text(raw_val)
 
                 self.services_data[service_id] = fields
             except Exception:
@@ -94,7 +104,7 @@ class KnowledgeEngine:
             sits.append("lost")
         if any(w in t for w in ["تجديد", "أجدد", "اجدد", "منتهي", "خلص", "باقي عليه", "تمديد"]):
             sits.append("renewal")
-        if any(w in t for w in ["أول مرة", "اول مرة", "جديد", "إصدار أول", "اصدار اول"]):
+        if any(w in t for w in ["أول مرة", "اول مرة", "لأول مرة", "لاول مرة", "جديد", "إصدار أول", "اصدار اول", "أول إصدار", "اول اصدار", "ما طلعت", "ما عمري طلعت", "لسة ما"]):
             sits.append("first_issue")
         return sits
 
@@ -112,6 +122,8 @@ class KnowledgeEngine:
             return "documents"
         if any(w in t for w in ["شروط", "عمر", "موافقة", "يحق", "ولي أمر", "زوجها", "قاصر"]):
             return "conditions"
+        if any(w in t for w in ["إجراءات", "اجراءات", "خطوات", "شو أعمل", "شو اعمل", "كيف أبدأ", "كيف ابدا"]):
+            return "procedures"
         return "general"
 
     def _format_service_name(self, doc_type: str, situation: str) -> str:
@@ -133,8 +145,12 @@ class KnowledgeEngine:
     def retrieve(self, question: str, history: Optional[List[Dict[str, str]]] = None) -> RetrievalResult:
         # 1. Out-of-scope check
         out_of_scope_keywords = [
-            "طيران", "تذكرة", "دبي", "جامعية", "شهادة جامعية", "ترخيص",
-            "سيارة", "مخالفات", "فيزا", "شنغن", "عمرة", "حج"
+            "طيران", "تذكرة", "تذاكر", "دبي", "جامعية", "شهادة جامعية", "تصديق الشهادة",
+            "ترخيص سيارة", "ترخيص مركبة", "رخصة قيادة", "رخصة القيادة", "رخصة سواقة", "رخصة السواقة",
+            "مخالفات السير", "مخالفة سير", "عدم محكومية", "شهادة عدم محكومية",
+            "ضريبة الدخل", "ضريبة المسقفات", "المسقفات", "مسقفات",
+            "تأمين صحي", "الضمان الاجتماعي", "فيزا شنغن", "تأشيرة دخول", "تأشيرة سياحية",
+            "عمرة", "حج"
         ]
         if any(kw in question for kw in out_of_scope_keywords):
             return RetrievalResult(service_found=False, contexts=[])
@@ -212,6 +228,25 @@ class KnowledgeEngine:
 
         contexts = []
 
+        # Check for multi-intent questions (both docs and fees)
+        has_fee_intent = any(w in question for w in ["رسوم", "كم بكلف", "قديش بدفع", "سعر", "تكلفة", "غرامة"])
+        has_doc_intent = any(w in question for w in ["أوراق", "اوراق", "وثائق", "صورة", "صور", "شو اجيب", "شو بلزمني", "مطلوب"])
+        
+        if has_fee_intent and has_doc_intent and len(detected_sits) <= 1:
+            doc_val = file_data.get("الوثائق المطلوبة", "")
+            fees_val = file_data.get("الرسوم", "")
+            notes_val = file_data.get("ملاحظات", "")
+            full_fees_text = f"{fees_val}\n{notes_val}".strip()
+            contexts.append(f"{svc_name} - الوثائق المطلوبة: {doc_val}")
+            contexts.append(f"{svc_name} - الرسوم: {full_fees_text}")
+            return RetrievalResult(
+                service_found=True,
+                document_type=doc_type,
+                situation=situation,
+                section="documents_and_fees",
+                contexts=contexts
+            )
+
         if topic == "time":
             time_val = file_data.get("الزمن المستغرق", "45 دقيقة")
             contexts.append(f"{svc_name} - الزمن المستغرق لتقديم الخدمة: {time_val}")
@@ -240,8 +275,11 @@ class KnowledgeEngine:
 
         elif topic == "conditions":
             cond_val = file_data.get("شروط تقديم الخدمة", "")
-            # If asking about wife approval, make sure that line is prioritized
             contexts.append(f"{svc_name} - شروط تقديم الخدمة: {cond_val}")
+
+        elif topic == "procedures":
+            proc_val = file_data.get("إجراءات تقديم الخدمة", "")
+            contexts.append(f"{svc_name} - إجراءات تقديم الخدمة: {proc_val}")
 
         else:
             # Fallback

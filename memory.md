@@ -56,20 +56,35 @@
      - Coreference resolution across conversational turns (`history`).
      - Ambiguity detection (`is_ambiguous=True`).
    - Implemented `tests/test_phase2.py` testing 12 critical scenarios: **12/12 passed (100%)**.
-   - Added health-check caching in `ResponseGenerator`, speeding up execution time from 20.6s to 3.07s.
+
+9. **Phase 3 Implementation & Guardrails Benchmark (`src/generator.py`, `src/engine.py`, `tests/test_phase3.py`)**:
+   - Connected live Ollama inference with `command-r7b-arabic:7b`.
+   - Designed enhanced zero-fluff system prompt eliminating conversational filler.
+   - Refined numerical and conditional rule compliance:
+     - Conditional age rules ($\ge 16$, $< 16$, $\ge 18$).
+     - Document validity rules ($< 180$ days, $> 180$ days).
+     - Delayed first-issue ID penalty rule ($+10$ JOD if $\ge 18$).
+     - Urgency fee calculation ($+25$ JOD).
+     - Correction of false citizen assumptions (e.g. wife passport without husband consent).
+   - Guardrail order calibrated: ambiguity clarification prioritizes prompt without loading invalid contexts (`contexts = []`).
+   - Broadened unambiguous out-of-scope keyword filter (driving license, non-criminal record, property tax, visas).
+   - Created `tests/test_phase3.py`: **12/12 passed (100%)**.
+   - Verified `main.py questions.json`: 6/6 messages processed in 23.7s with exact match to reference answers format.
 
 ---
 
 ## Current Status
-- **Completed Phases**: Phase 0, Phase 1, Phase 2.
-- **Current Phase**: Ready for Phase 3 (Prompt Tuning with Live LLM) & Phase 5 (Frontend for Person 3).
-- **Benchmark Score**: 100% (12/12 test cases passing).
-- **Evaluation Runner**: `python main.py questions.json` runs in 3.07 seconds and creates compliant `answers.json`.
+- **Completed Phases**: Phase 0, Phase 1, Phase 2, Phase 3, Phase 4.
+- **Current Phase**: Ready for Phase 5 (Streamlit Frontend for Person 3) & Phase 6 (Offline Verification).
+- **Benchmark Scores**:
+  - Phase 2 Retrieval Benchmark: **12/12 Passed (100%)**
+  - Phase 3 Prompt & Guardrail Benchmark: **12/12 Passed (100%)**
+- **Evaluation Runner**: `python main.py questions.json` processes 6 messages in 23.7 seconds with compliant `answers.json`.
 
 ---
 
 ## Immediate Next Steps
-1. Push Phase 2 code and test suite to GitHub (`feature/llm-evaluator`).
-2. Set up Ollama with a direct, reliable download or check if the user has an existing LLM/Ollama binary.
-3. Prepare Person 3's Streamlit frontend (`src/app.py`).
+1. Implement Person 3's interactive Streamlit web UI demo (`src/app.py`) for live judging presentations.
+2. Add offline test script verifying execution with simulated network disconnection.
+3. Commit and push working branch updates.
 

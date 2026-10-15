@@ -13,20 +13,24 @@ import urllib.error
 from typing import Optional
 from src.types import RetrievalResult, BotResponse
 
-DEFAULT_MODEL = "qwen2.5:7b"
+DEFAULT_MODEL = "command-r7b-arabic:7b"
 OLLAMA_API_URL = "http://localhost:11434/api/generate"
 
 REFUSAL_MESSAGE = "عذراً، لا تتوفر لدي معلومات عن هذه الخدمة. أستطيع المساعدة في خدمات جواز السفر ودفتر العائلة والبطاقة الذكية فقط."
 AMBIGUITY_MESSAGE = "يرجى توضيح المعاملة المطلوبة بالتحديد: هل تقصد جواز السفر، أم دفتر العائلة، أم البطاقة الذكية؟ وما هي الحالة (إصدار لأول مرة، تجديد، بدل فاقد، بدل تالف)؟"
 
-SYSTEM_PROMPT = """أنت موظف استعلامات رسمي في دائرة الأحوال المدنية والجوازات الأردنية.
-مهمتك الإجابة على استفسارات المواطنين بدقة واختصار ووضوح، باللغة العربية الفصحى.
+SYSTEM_PROMPT = """أنت موظف استعلامات رسمي وخبير في دائرة الأحوال المدنية والجوازات الأردنية.
+مهمتك الإجابة على استفسارات المواطنين بدقة متناهية واختصار ووضوح، باللغة العربية الفصحى.
 
 القواعد الصارمة:
-1. اعتمد فقط وحصرياً على "المعلومات الرسمية" المرفقة في الأسفل.
-2. لا تخترع أو تفترض أي معلومة أو مبالغ غير مذكورة في المراجع.
-3. إذا سأل المواطن عن رسوم أو شروط تعتمد على العمر أو مدة انتهاء الوثيقة أو المكان (داخل الأردن / بالخارج)، طبق القاعدة المطابقة لحالته بدقة.
-4. اجعل الإجابة مباشرة ومفيدة دون مقدمات مطولة."""
+1. الالتزام المطلق بالمرجعية: اعتمد حصرياً على [المعلومات الرسمية المعتمدة] المرفقة أدناه. لا تخترع أو تفترض أي معلومة أو مبالغ غير مذكورة فيها.
+2. الدقة في تطبيق القواعد والأرقام:
+   - عند السؤال عن رسوم أو شروط مشروطة بالعمر (مثل: أقل من 16، فوق 16، فوق 18)، أو مدة الصلاحية (أقل أو أكثر من 180 يوماً)، أو صفة المواطن (عسكري، مدني، مقدسي، داخل/خارج المملكة)، طبق القاعدة المطابقة لحالة السائل بدقة واذكر المبلغ المناسب لحالته فقط.
+   - في المقارنات (أيهما أغلى أو أكثر): قارن بين القيمتين بوضوح وبين أيهما أعلى أو أكثر تكلفة.
+   - في تصحيح المفاهيم الخاطئة: إذا كان افتراض المواطن غير صحيح (مثل اشتراط موافقة الزوج)، بيّن الحكم الصحيح مباشرة من التعليمات.
+   - عند وجود تفاصيل كثيرة أو قصة شخصية: ركز على السؤال الجوهري وأجب عنه بدقة وتجاهل التفاصيل الجانبية.
+3. الإجابة المباشرة وبدون حشو: ممنوع نهائياً استخدام أي عبارات ترحيبية أو تمهيد أو مجاملات (مثل: مرحباً، أهلاً بك، يسعدني، طاب يومك، شكراً). ادخل في صلب الإجابة فوراً بالمعلومة المطلوبة.
+4. الإيجاز: اجعل الإجابة مختصرة وشافية ومباشرة في حدود 1-3 جمل أو نقاط محددة."""
 
 
 class ResponseGenerator:
@@ -40,9 +44,20 @@ class ResponseGenerator:
         if self._checked_online:
             return self._is_online
         try:
-            req = urllib.request.Request("http://localhost:11434/", headers={"User-Agent": "RafeeqBot"})
-            with urllib.request.urlopen(req, timeout=1.5) as resp:
-                self._is_online = (resp.status == 200)
+            req = urllib.request.Request("http://localhost:11434/api/tags", headers={"User-Agent": "RafeeqBot"})
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    models = [m.get("name", "") for m in data.get("models", [])]
+                    if self.model_name not in models and models:
+                        matching = [m for m in models if self.model_name.split(":")[0] in m]
+                        if matching:
+                            self.model_name = matching[0]
+                        else:
+                            self.model_name = models[0]
+                    self._is_online = True
+                else:
+                    self._is_online = False
         except Exception:
             self._is_online = False
         self._checked_online = True
@@ -58,7 +73,7 @@ class ResponseGenerator:
             "options": {
                 "temperature": 0.1,      # Low temperature for factual consistency
                 "top_p": 0.8,
-                "num_predict": 256,       # Keep responses crisp and fast
+                "num_predict": 128,       # Keep responses crisp and fast
                 "num_ctx": 2048,          # Adequate context window
                 "stop": ["المواطن:", "السؤال:", "\n\n\n"]
             }
@@ -71,7 +86,7 @@ class ResponseGenerator:
         )
         
         try:
-            with urllib.request.urlopen(req, timeout=5) as response:
+            with urllib.request.urlopen(req, timeout=20) as response:
                 if response.status == 200:
                     result = json.loads(response.read().decode("utf-8"))
                     return result.get("response", "").strip()
@@ -88,18 +103,18 @@ class ResponseGenerator:
         Takes the user question and the structured retrieval result,
         and produces a strictly grounded BotResponse.
         """
-        # Guardrail 1: Out-of-scope query -> Instant zero-latency refusal with empty contexts
+        # Guardrail 1: Ambiguous query -> Clarification prompt with empty contexts
+        if retrieval.is_ambiguous:
+            return BotResponse(
+                answer=AMBIGUITY_MESSAGE,
+                contexts=[]
+            )
+
+        # Guardrail 2: Out-of-scope query -> Instant zero-latency refusal with empty contexts
         if not retrieval.service_found or not retrieval.contexts:
             return BotResponse(
                 answer=REFUSAL_MESSAGE,
                 contexts=[]
-            )
-
-        # Guardrail 2: Ambiguous query -> Clarification prompt
-        if retrieval.is_ambiguous:
-            return BotResponse(
-                answer=AMBIGUITY_MESSAGE,
-                contexts=retrieval.contexts
             )
 
         # Build Grounded Prompt with Contexts
